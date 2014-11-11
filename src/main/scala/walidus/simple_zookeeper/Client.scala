@@ -21,11 +21,19 @@ class Client extends Watcher with Runnable {
 
   val clientDesc = InetAddress.getLocalHost().getCanonicalHostName() + '_' + Client.getCounter()
 
-  (1 to 3 toList).takeWhile(_ => zk.getState() == ZooKeeper.States.CONNECTING).map(_ => Thread.sleep(500))
-  val conf = zk.getState() match {
-    case ZooKeeper.States.CONNECTED => registerAndGetConf
-    case s                          => println("Unknown state: " + s); "Default configuration on port 707"
+  val conf = getConf()
+  
+// pull configuration or get default one
+  def getConf(): String = {
+    (1 to 3 toList)
+      .takeWhile(_ => zk.getState() == ZooKeeper.States.CONNECTING)
+      .foreach(_ => Thread.sleep(500)) // curator would help for this waiting blockUntilConnectedOrTimedOut()
+    zk.getState() match {
+      case ZooKeeper.States.CONNECTED => registerAndGetConf
+      case s                          => println("Unknown state: " + s); "Default configuration on port 707"
+    }
   }
+
   private def registerAndGetConf() = {
     zk.create("/services/runtime/" + clientDesc, new Array[Byte](0), Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
     new String(zk.getData("/services/configuration", false, null))
@@ -70,14 +78,14 @@ class Client extends Watcher with Runnable {
 object Client extends Watcher with StatCallback {
   var counter = 1
   var alive = true
+  var threadList: List[Thread] = Nil
 
   BasicConfigurator.configure()
   Logger.getRootLogger().setLevel(Level.WARN);
 
   val zk = new ZooKeeper("127.0.0.1:2181", 3000, this)
-  //zk.create("/services", new Array[Byte](0), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT)
-  //zk.create("/services/runtime", new Array[Byte](0), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT)
-  //zk.create("/services/configuration", "Client configuration with port 7".getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT)
+
+  initDirStructureAndConfiguration()
 
   def getCounter() = { val cnt = counter; counter += 1; cnt }
 
@@ -87,9 +95,11 @@ object Client extends Watcher with StatCallback {
 
     zk.create("/services/runtime/0", new Array[Byte](0), Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL)
 
-    new Thread(new Client()).start()
-    new Thread(new Client()).start()
-    new Thread(new Client()).start()
+    threadList = List(
+      new Thread(new Client()),
+      new Thread(new Client()),
+      new Thread(new Client()))
+    threadList.foreach(t => t.start())
 
     while (alive) {
       zk.getState() match {
@@ -98,11 +108,17 @@ object Client extends Watcher with StatCallback {
       }
       Thread sleep 2000
     }
-    Thread sleep 2000
+    threadList.foreach(f => {
+      (1 to 3 toList)
+        .takeWhile(_ => f.isAlive())
+        .foreach(_ => Thread.sleep(100))
+    })
+
     println("<<< Main loop is terminated.>>>")
   } finally {
     alive = false
   }
+  // main loop can be terminated by deleting znode "/services/runtime/0" 
   @Override
   def processResult(rc: Int, path: String, ctx: AnyRef, stat: Stat): Unit = {
     alive = Code.get(rc) match {
@@ -130,15 +146,25 @@ object Client extends Watcher with StatCallback {
         case KeeperState.Disconnected => {
           zk.close();
           println("Connection with zookeeper lost: from main")
-          new Thread(new Client()).start()
+          // run new client to show proper start without zookeeper
+          val t = new Thread(new Client())
+          t.start()
+          threadList +:= t
+          Thread.sleep(100)
+          alive = false
+          println("INFO: Services could continue, but without ZO you don't have elegant way to turn off this program. ### Kill pill taken. ###")
         }
       }
-    } else {
-      //if (path != null && path.equals(znode)) {
-      // Something has changed on the node, let's find out
-      //zk.exists(znode, true, this, null);
-      //}
     }
   }
-  // init configuration file at  /services/configuration
+
+  @Override
+  def initDirStructureAndConfiguration(): Unit = {
+    if(zk.exists("/services", false)==null)
+    	zk.create("/services", new Array[Byte](0), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT)
+    if(zk.exists("/services/runtime", false)==null)
+    	zk.create("/services/runtime", new Array[Byte](0), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT)
+    if(zk.exists("/services/configuration", false)==null)
+    	zk.create("/services/configuration", "Client configuration with port 7".getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT)
+  }
 }
