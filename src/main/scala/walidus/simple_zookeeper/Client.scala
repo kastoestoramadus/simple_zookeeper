@@ -12,18 +12,23 @@ import org.apache.log4j.BasicConfigurator
 import org.apache.log4j.Logger
 import org.apache.log4j.Level
 import org.apache.zookeeper.Watcher.Event
+import scala.collection.immutable.Map
+import org.apache.zookeeper.AsyncCallback.StatCallback
+import org.apache.zookeeper.KeeperException.Code
 
 class Client extends Watcher with Runnable {
   val zk = new ZooKeeper("127.0.0.1:2181", 3000, this)
+
   val clientDesc = InetAddress.getLocalHost().getCanonicalHostName() + '_' + Client.getCounter()
-  Thread sleep 1000
+
+  (1 to 3 toList).takeWhile(_ => zk.getState() == ZooKeeper.States.CONNECTING).map(_ => Thread.sleep(500))
   val conf = zk.getState() match {
     case ZooKeeper.States.CONNECTED => registerAndGetConf
-    case s => println("Unknown state: "+s); "Default configuration on port 707"
+    case s                          => println("Unknown state: " + s); "Default configuration on port 707"
   }
   private def registerAndGetConf() = {
-          zk.create("/services/runtime/" + clientDesc, new Array[Byte](0), Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
-      new String(zk.getData("/services/configuration", false, null))
+    zk.create("/services/runtime/" + clientDesc, new Array[Byte](0), Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
+    new String(zk.getData("/services/configuration", false, null))
   }
 
   @Override
@@ -31,9 +36,9 @@ class Client extends Watcher with Runnable {
     println("###########" + conf + " <- config from: " + clientDesc)
     while (Client.alive) {
       Thread sleep 2000
-      print(" >"+clientDesc + " is alive!")
+      print(" >" + clientDesc + " is alive!")
     }
-    println(clientDesc + " is terminated.")
+    println("###>" + clientDesc + " is terminated.")
   }
   @Override
   def process(event: WatchedEvent): Unit = {
@@ -43,23 +48,26 @@ class Client extends Watcher with Runnable {
       // connection has changed
       event.getState() match {
         case KeeperState.SyncConnected =>
-        // In this particular example we don't need to do anything
-        // here - watches are automatically re-registered with 
-        // server and any watches triggered while the client was 
-        // disconnected will be delivered (in order of course)
         case KeeperState.Disconnected => {
-          // It's all over
+          // no watchs was set so below method won't no be fired?
           zk.close();
-          println("Connevtion with zookeeper lost: from " + clientDesc)
+          println("Connection with zookeeper lost: from " + clientDesc)
         }
       }
-    } else {
-      // ignore
     }
   }
 }
-
-object Client extends Watcher {
+/**
+ * Class for ilustrating implementation of requirements for recruitment task. TBD with ZK console
+ * 0. uruchom zookeepera i clienta do poglądu "drzewa katalogowego"
+ * 1. odpalę kilka usług i sprawdzę zawartość /services/runtime. Liczba
+ * odpalonych usług będzie odpowiadała liczbie węzłów.
+ * 2. odpalę usługę i sprawdzę, czy używana (wyświetlona) konfiguracja
+ * odpowiada zapisanej w ZooKeeper z węzła /services/configuration
+ * 3. Zamknę ZooKeeper i sprawdzę liczbę uruchomionych usług.
+ * 4. Przy zatrzymanym ZooKeeperze, uruchomię poprawnie usługę.
+ */
+object Client extends Watcher with StatCallback {
   var counter = 1
   var alive = true
 
@@ -85,7 +93,7 @@ object Client extends Watcher {
 
     while (alive) {
       zk.getState() match {
-        case ZooKeeper.States.CONNECTED => zk.exists("/services/runtime/0", false)
+        case ZooKeeper.States.CONNECTED => zk.exists("/services/runtime/0", true, this, null)
         case _                          => //ignore
       }
       Thread sleep 2000
@@ -94,6 +102,21 @@ object Client extends Watcher {
     println("<<< Main loop is terminated.>>>")
   } finally {
     alive = false
+  }
+  @Override
+  def processResult(rc: Int, path: String, ctx: AnyRef, stat: Stat): Unit = {
+    alive = Code.get(rc) match {
+      case Code.OK             => true
+      case Code.NONODE         => false
+      case Code.SESSIONEXPIRED => true
+      case Code.NOAUTH         => true
+      case _ => {
+        // Retry errors
+        zk.exists("/services/runtime/0", true, this, null);
+        false
+      }
+    }
+
   }
 
   @Override
@@ -104,12 +127,7 @@ object Client extends Watcher {
       // connection has changed
       event.getState() match {
         case KeeperState.SyncConnected =>
-        // In this particular example we don't need to do anything
-        // here - watches are automatically re-registered with 
-        // server and any watches triggered while the client was 
-        // disconnected will be delivered (in order of course)
         case KeeperState.Disconnected => {
-          // It's all over
           zk.close();
           println("Connection with zookeeper lost: from main")
           new Thread(new Client()).start()

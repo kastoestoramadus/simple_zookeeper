@@ -1,4 +1,4 @@
-name := "hello"
+name := "simple_zookeeper"
 
 version := "1.0"
 
@@ -10,3 +10,9 @@ libraryDependencies ++= Seq(
 )
 
 scalaVersion := "2.10.4"
+
+EclipseKeys.withSource := true
+
+EclipseKeys.eclipseOutput := Some(".target")
+
+EclipseKeys.useProjectId := true
