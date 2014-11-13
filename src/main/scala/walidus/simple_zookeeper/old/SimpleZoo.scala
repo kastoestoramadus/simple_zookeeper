@@ -1,4 +1,4 @@
-package walidus.simple_zookeeper
+package walidus.simple_zookeeper.old
 
 import org.apache.zookeeper.ZooKeeper
 import org.apache.zookeeper.Watcher.Event.KeeperState
@@ -14,8 +14,6 @@ import java.net.InetAddress
 import org.apache.log4j.BasicConfigurator
 import org.apache.log4j.Logger
 import org.apache.log4j.Level
-
-import scala.collection.immutable.Map
 
 
 class SimpleZoo extends Watcher with Runnable {
@@ -93,8 +91,8 @@ object SimpleZoo extends Watcher with StatCallback {
   def getCounter() = { val cnt = counter; counter += 1; cnt }
 
   // program should be terminated by deleting the zero znode
-  @Override
-  def main(args: Array[String]): Unit = try {
+  //@Override
+  def DISABLED_FROM_DEFAULT_RUN_FROM_SBT_main(args: Array[String]): Unit = try {
 
     zk.create("/services/runtime/0", new Array[Byte](0), Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL)
 

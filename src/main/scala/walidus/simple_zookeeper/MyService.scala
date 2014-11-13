@@ -6,8 +6,14 @@ import spray.http._
 import spray.http.MediaTypes._
 import spray.httpx.marshalling.ToResponseMarshallable.isMarshallable
 import spray.routing.Directive.pimpApply
+import akka.actor.ActorSystem
+import akka.actor.Props
+import akka.actor.ActorRef
+import akka.pattern.ask
+import scala.concurrent.duration._
+import akka.util.Timeout
 
-class MyServiceActor extends Actor with MyService with KeptByZoo {
+class MyServiceActor extends MyService with KeptByZoo {
 
   // the HttpService trait defines only one abstract member, which
   // connects the services environment to the enclosing actor or test
@@ -18,27 +24,26 @@ class MyServiceActor extends Actor with MyService with KeptByZoo {
   // or timeout handling
   def receive = runRoute(homeRoute ~ pingRoute ~ pongRoute)
 }
+trait MyService extends Actor with HttpService {
+  implicit def executionContext = actorRefFactory.dispatcher
+  implicit val timeout = Timeout(5 seconds)
+  val serviceName = "dispatcher"
+  val homeS = context.actorOf(Props[HomeActor], "home-service")
+  val pingS = context.actorOf(Props[PingActor], "ping-service")
+  val pongS = context.actorOf(Props[PongActor], "pong-service")
 
-trait MyService extends HttpService {
-  val serviceName = "home"
   val homeRoute =
     path("") {
       get {
         respondWithMediaType(`text/html`) {
-          complete {
-            <html>
-              <body>
-                <h1>Say hello to services <i>/ping</i> and <i>/pong</i>!</h1>
-              </body>
-            </html>
-          }
+          ctx: RequestContext => homeS ! ctx;
         }
       }
     }
   def pingRoute = path("ping") {
-    get { complete("pong!") }
+    get { ctx: RequestContext => pingS ! ctx; }
   }
   def pongRoute = path("pong") {
-    get { complete("pong!?") }
+    get { ctx: RequestContext => pongS ! ctx }
   }
 }

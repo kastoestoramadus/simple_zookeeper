@@ -1,13 +1,17 @@
 package walidus.simple_zookeeper
 
-import akka.actor.{ActorSystem, Props}
+import akka.actor.{ ActorSystem, Props }
 import akka.io.IO
 import spray.can.Http
 import akka.pattern.ask
 import akka.util.Timeout
 import scala.concurrent.duration._
-
+import org.apache.log4j.BasicConfigurator
+import org.apache.log4j.Logger
+import org.apache.log4j.Level
 object Boot extends App {
+  BasicConfigurator.configure()
+  Logger.getRootLogger().setLevel(Level.WARN);
 
   // we need an ActorSystem to host our application in
   implicit val system = ActorSystem("on-spray-can")

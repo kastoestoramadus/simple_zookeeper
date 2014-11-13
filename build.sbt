@@ -7,7 +7,7 @@ libraryDependencies ++= {
   val sprayV = "1.3.2"
   Seq(
    "org.apache.curator" % "curator-framework" % "2.7.0",
-   "org.apache.curator" % "curator-test" % "2.0.0-incubating",
+   "org.apache.curator" % "curator-test" % "2.7.0",
    "org.apache.zookeeper" % "zookeeper" % "3.4.5"
     exclude("javax.jms", "jms")
     exclude("com.sun.jdmk", "jmxtools")
