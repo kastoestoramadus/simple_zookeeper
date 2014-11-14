@@ -8,6 +8,7 @@ libraryDependencies ++= {
   Seq(
    "org.apache.curator" % "curator-framework" % "2.7.0",
    "org.apache.curator" % "curator-test" % "2.7.0",
+   "io.spray" %%  "spray-json" % "1.3.1",
    "org.scalatest" % "scalatest_2.11" % "2.2.1" % "test",
    "org.testng" % "testng" % "6.8.8",
    "org.apache.zookeeper" % "zookeeper" % "3.4.5"

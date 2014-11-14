@@ -3,11 +3,13 @@ package walidus.simple_zookeeper
 import java.net.InetAddress
 import java.net.Socket
 import java.util.regex.PatternSyntaxException
-
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.imps.CuratorFrameworkState
 import org.apache.zookeeper.CreateMode
 import org.apache.zookeeper.ZooDefs.Ids
+import scala.concurrent.duration.Duration
+import spray.json._
+import DefaultJsonProtocol._
 
 object Zoo {
 
@@ -49,7 +51,7 @@ object Zoo {
 trait KeptByZoo {
   val serviceName: String
   val clientDesc = serviceName + '_' + InetAddress.getLocalHost().getCanonicalHostName()
-  protected lazy val conf = registerAndGetConf
+  lazy val conf: String = registerAndGetConf
 
   private def registerAndGetConf(): String = {
     if (Zoo.isZooOpen) {
@@ -57,7 +59,8 @@ trait KeptByZoo {
       client.create().withMode(CreateMode.EPHEMERAL).withACL(Ids.OPEN_ACL_UNSAFE)
         .forPath("/services/runtime/" + clientDesc)
       new String(client.getData().forPath("/services/configuration"))
-    } else "Default configuration on port 808"
+    } else "Default configuration"
   }
   def registerInZoo(): Unit = conf
 }
+case class Configuration(port: Int, timeout: Duration ,comment: String)
