@@ -15,21 +15,16 @@ class DispatcherActor extends MyServiceActor with KeptByZoo {
   val homeS = context.actorOf(Props[HomeActor], "home-service")
   val pingS = context.actorOf(Props[PingActor], "ping-service")
   val pongS = context.actorOf(Props[PongActor], "pong-service")
-  conf
+  registerInZoo()
 }
-
+// trait created to enable easy testing
 trait MyServiceActor extends Actor with MyService {
   implicit def executionContext = actorRefFactory.dispatcher
   implicit val timeout = Timeout(5 seconds)
   val myActor: ActorRef = self
 
-  // the HttpService trait defines only one abstract member, which
-  // connects the services environment to the enclosing actor or test
   def actorRefFactory = context
 
-  // this actor only runs our route, but you could add
-  // other things here, like request stream processing
-  // or timeout handling
   def receive = runRoute(homeRoute ~ pingRoute ~ pongRoute)
 }
 

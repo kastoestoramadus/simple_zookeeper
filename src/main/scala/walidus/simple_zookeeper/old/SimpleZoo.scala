@@ -16,6 +16,7 @@ import org.apache.zookeeper.ZooDefs.Ids
 import org.apache.zookeeper.ZooKeeper
 import org.apache.zookeeper.data.Stat
 
+// prototype version of project, creation was fast and furious ;)
 class SimpleZoo extends Watcher with Runnable {
   val zk = new ZooKeeper("127.0.0.1:2181", 3000, this)
 

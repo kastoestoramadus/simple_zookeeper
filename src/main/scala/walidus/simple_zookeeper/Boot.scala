@@ -26,7 +26,8 @@ object Boot extends App {
     val retryPolicy: RetryPolicy = new RetryOneTime(300)
     CuratorFrameworkFactory.builder().connectString("127.0.0.1:2181")
       .retryPolicy(retryPolicy).build()
-  })
+  }) // such form works easy with tests
+  
   // create and start our service actor
   val service = system.actorOf(Props[DispatcherActor], "demo-service")
 

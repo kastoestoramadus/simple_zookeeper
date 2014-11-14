@@ -11,13 +11,14 @@ import walidus.simple_zookeeper.PingService
 import walidus.simple_zookeeper.PongService
 import walidus.simple_zookeeper.Zoo
 
+// Testing two layers, actors + routing/behavior, could tested in isolation 
 class ServicesSpec extends Specification with Specs2RouteTest with MyService {
   def actorRefFactory = system
   val myActor = actorRefFactory.actorOf(Props[TestDispatcherActor], "dispatcher-service")
   val homeS = actorRefFactory.actorOf(Props[TestHomeActor], "home-service")
   val pingS = actorRefFactory.actorOf(Props[TestPingActor], "ping-service")
   val pongS = actorRefFactory.actorOf(Props[TestPongActor], "pong-service")
-//to myservice added trait actor and it don't compile, interesting, it worked without async evaluation
+
 "MyService" should {
 
     "return a greeting for GET requests to the root path" in {
