@@ -1,19 +1,15 @@
 package com.example
 
 import org.specs2.mutable.Specification
-import spray.testkit.Specs2RouteTest
-import spray.http._
-import StatusCodes._
-import walidus.simple_zookeeper.MyService
+
 import akka.actor.Props
-import walidus.simple_zookeeper.HomeActor
-import walidus.simple_zookeeper.PingActor
-import walidus.simple_zookeeper.PongActor
-import walidus.simple_zookeeper.DispatcherActor
-import walidus.simple_zookeeper.PingService
-import walidus.simple_zookeeper.MyServiceActor
-import walidus.simple_zookeeper.PongService
+import spray.http.StatusCodes.MethodNotAllowed
+import spray.testkit.Specs2RouteTest
 import walidus.simple_zookeeper.HomeService
+import walidus.simple_zookeeper.MyService
+import walidus.simple_zookeeper.MyServiceActor
+import walidus.simple_zookeeper.PingService
+import walidus.simple_zookeeper.PongService
 
 class ServicesSpec extends Specification with Specs2RouteTest with MyService {
   def actorRefFactory = system

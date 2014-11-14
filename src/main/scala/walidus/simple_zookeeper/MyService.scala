@@ -1,17 +1,15 @@
 package walidus.simple_zookeeper
 
+import scala.concurrent.duration.DurationInt
+
 import akka.actor.Actor
-import spray.routing._
-import spray.http._
-import spray.http.MediaTypes._
-import spray.httpx.marshalling.ToResponseMarshallable.isMarshallable
-import spray.routing.Directive.pimpApply
-import akka.actor.ActorSystem
-import akka.actor.Props
 import akka.actor.ActorRef
-import akka.pattern.ask
-import scala.concurrent.duration._
+import akka.actor.Props
 import akka.util.Timeout
+import spray.http.MediaTypes._
+import spray.routing.Directive.pimpApply
+import spray.routing.HttpService
+import spray.routing.RequestContext
 
 class DispatcherActor extends MyServiceActor with KeptByZoo {
   val homeS = context.actorOf(Props[HomeActor], "home-service")

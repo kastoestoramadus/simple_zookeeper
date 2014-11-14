@@ -1,17 +1,13 @@
 package walidus.simple_zookeeper
 
-import org.apache.zookeeper.ZooKeeper
-import org.apache.zookeeper.ZooDefs.Ids
-import org.apache.zookeeper.CreateMode
 import java.net.InetAddress
-import org.apache.curator.framework.CuratorFrameworkFactory
-import org.apache.curator.framework.imps.CuratorFrameworkState
-import java.util.concurrent.TimeUnit
-import org.apache.curator.RetryPolicy
-import org.apache.curator.retry.RetryOneTime
 import java.net.Socket
-import java.net.InetSocketAddress
+import java.util.regex.PatternSyntaxException
+
 import org.apache.curator.framework.CuratorFramework
+import org.apache.curator.framework.imps.CuratorFrameworkState
+import org.apache.zookeeper.CreateMode
+import org.apache.zookeeper.ZooDefs.Ids
 
 object Zoo {
 
@@ -30,7 +26,7 @@ object Zoo {
           .forPath("/services/configuration", "Client configuration with port 7".getBytes())
     }
   }
- 
+
   def getConnectString = client.getZookeeperClient().getCurrentConnectionString()
 
   def createZooKeeperClient() = client.getZookeeperClient()
@@ -38,7 +34,7 @@ object Zoo {
     client.getState() == CuratorFrameworkState.STARTED &&
       serverListening(connectionHost, connectionPort)
   private def connectionHost: String = getConnectString.split(':')(0)
-  private def connectionPort: Int = Integer.parseInt( getConnectString.split(':')(1))
+  private def connectionPort: Int = Integer.parseInt(getConnectString.split(':')(1))
   private def serverListening(host: String, port: Int): Boolean = {
     var s: Socket = null;
     try {
@@ -59,8 +55,8 @@ trait KeptByZoo {
     if (Zoo.isZooOpen) {
       val client = Zoo.client
       client.create().withMode(CreateMode.EPHEMERAL).withACL(Ids.OPEN_ACL_UNSAFE)
-      .forPath("/services/runtime/" + clientDesc)
-      new String( client.getData().forPath("/services/configuration"))      
+        .forPath("/services/runtime/" + clientDesc)
+      new String(client.getData().forPath("/services/configuration"))
     } else "Default configuration on port 808"
   }
   def registerInZoo(): Unit = conf
