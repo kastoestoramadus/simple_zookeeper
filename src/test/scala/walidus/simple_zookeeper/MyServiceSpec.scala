@@ -1,7 +1,6 @@
-package com.example
+package walidus.simple_zookeeper
 
 import org.specs2.mutable.Specification
-
 import akka.actor.Props
 import spray.http.StatusCodes.MethodNotAllowed
 import spray.testkit.Specs2RouteTest
@@ -10,6 +9,7 @@ import walidus.simple_zookeeper.MyService
 import walidus.simple_zookeeper.MyServiceActor
 import walidus.simple_zookeeper.PingService
 import walidus.simple_zookeeper.PongService
+import walidus.simple_zookeeper.Zoo
 
 class ServicesSpec extends Specification with Specs2RouteTest with MyService {
   def actorRefFactory = system
@@ -53,13 +53,13 @@ class ServicesSpec extends Specification with Specs2RouteTest with MyService {
   
 }
 class TestPingActor extends PingService {
-  val conf = "Testing configuration of PingActor"
+  val conf = Zoo.defaultConfiguration
 }
 class TestPongActor extends PongService {
-  val conf = "Testing configuration of PongActor"
+  val conf = Zoo.defaultConfiguration
 }
 class TestHomeActor extends HomeService {
-  val conf = "Testing configuration of HomeActor"
+  val conf = Zoo.defaultConfiguration
 }
 class TestDispatcherActor extends MyServiceActor {
   val homeS = context.actorOf(Props[TestHomeActor], "home-service")

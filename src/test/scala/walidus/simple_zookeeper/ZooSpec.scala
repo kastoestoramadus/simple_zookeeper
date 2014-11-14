@@ -1,3 +1,4 @@
+package walidus.simple_zookeeper;
 
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.CuratorFrameworkFactory
@@ -12,10 +13,13 @@ import org.testng.Assert.assertNull
 import org.testng.annotations.AfterMethod
 import org.testng.annotations.BeforeMethod
 import org.testng.annotations.Test
-
 import walidus.simple_zookeeper.KeptByZoo
 import walidus.simple_zookeeper.Zoo
+import walidus.simple_zookeeper.Configuration
+import spray.json._
+import DefaultJsonProtocol._
 
+// I am forced to use TestNg, BaseClassForTests uses it
 class ZooSpec extends BaseClassForTests with TestNGSuiteLike with SomethingDoer with Assertions {
 
   var cli: CuratorFramework = null
@@ -26,8 +30,9 @@ class ZooSpec extends BaseClassForTests with TestNGSuiteLike with SomethingDoer 
   @BeforeMethod
   override def setup(): Unit = {
     super.setup
-    cli = CuratorFrameworkFactory.newClient(server.getConnectString(), new RetryOneTime(2000));
+    cli = CuratorFrameworkFactory.newClient(server.getConnectString(), new RetryOneTime(1000));
     Zoo.initZoo(cli)
+    registerInZoo()
     //cli.start()
   }
 
@@ -45,9 +50,17 @@ class ZooSpec extends BaseClassForTests with TestNGSuiteLike with SomethingDoer 
   }
   @Test
   def shouldRegisterProperly(): Unit = {
-    registerInZoo()
-    assertNotNull(cli.checkExists().forPath("/services/runtime/" + clientDesc))
+    assertNotNull(cli.checkExists().forPath("/services/runtime/" + clientDesc),
+        "Conf is: "+conf+" Children: "+cli.getChildren().forPath("/services/runtime").toString)
     assertNull(cli.checkExists().forPath("/services/notexisted"))
+  }
+  @Test
+  def shouldLoadConfigurationFromZooWithourConnection(): Unit = {
+    
+    conf match {
+      case Configuration("You are from Zoo.", 7, 2000L) => // it is ok
+      case _ => assert(false)
+    }
   }
   // Can I belive this test..
   @Test
@@ -65,7 +78,16 @@ class ZooSpec extends BaseClassForTests with TestNGSuiteLike with SomethingDoer 
     doer.registerInZoo()
     assertEquals("COMPLETE", doer.doSomething)
   }
+  @Test
+  def shouldLoadDefaultConfigurationWithourConnection(): Unit = {
+    server.close()
+    cli.close()
+    val doer = new AnyRef with SomethingDoer
+    doer.registerInZoo()
+    assertEquals(Zoo.defaultConfiguration, doer.conf)
+  }
 }
+
 trait SomethingDoer extends KeptByZoo {
   val serviceName = "testService"
 

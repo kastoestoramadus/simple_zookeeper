@@ -7,9 +7,9 @@ import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.imps.CuratorFrameworkState
 import org.apache.zookeeper.CreateMode
 import org.apache.zookeeper.ZooDefs.Ids
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 import spray.json._
-import DefaultJsonProtocol._
+
 
 object Zoo {
 
@@ -25,7 +25,8 @@ object Zoo {
         client.create().withACL(Ids.OPEN_ACL_UNSAFE).forPath("/services/runtime")
       if (client.checkExists().forPath("/services/configuration") == null)
         client.create().withACL(Ids.OPEN_ACL_UNSAFE)
-          .forPath("/services/configuration", "Client configuration with port 7".getBytes())
+          .forPath("/services/configuration",
+              """{"comment":"You are from Zoo.","port":7,"timeout":2000}""".getBytes())
     }
   }
 
@@ -47,20 +48,25 @@ object Zoo {
       if (s != null) try { s.close() } catch { case _: Throwable => }
     }
   }
+  def defaultConfiguration = Configuration("Default configuration", 808, 3000L )
 }
+
+
 trait KeptByZoo {
   val serviceName: String
   val clientDesc = serviceName + '_' + InetAddress.getLocalHost().getCanonicalHostName()
-  lazy val conf: String = registerAndGetConf
+  lazy val conf: Configuration = registerAndGetConf
 
-  private def registerAndGetConf(): String = {
+  private def registerAndGetConf(): Configuration = {
     if (Zoo.isZooOpen) {
+      import MyJsonProtocol._
       val client = Zoo.client
       client.create().withMode(CreateMode.EPHEMERAL).withACL(Ids.OPEN_ACL_UNSAFE)
         .forPath("/services/runtime/" + clientDesc)
-      new String(client.getData().forPath("/services/configuration"))
-    } else "Default configuration"
+      val asString = new String(client.getData().forPath("/services/configuration"))
+      asString.parseJson.convertTo[Configuration]
+    } else Configuration("Default configuration", 808, 3000L )
   }
   def registerInZoo(): Unit = conf
 }
-case class Configuration(port: Int, timeout: Duration ,comment: String)
+
