@@ -11,18 +11,15 @@ import org.apache.curator.RetryPolicy
 import org.apache.curator.retry.RetryOneTime
 import java.net.Socket
 import java.net.InetSocketAddress
+import org.apache.curator.framework.CuratorFramework
 
 object Zoo {
-  def connectionHost: String = "127.0.0.1"
-  def connectionPort: Int = 2181
-  val client = {
-    val retryPolicy: RetryPolicy = new RetryOneTime(300)
-    CuratorFrameworkFactory.builder().connectString(connectionHost + ':' + connectionPort)
-      .retryPolicy(retryPolicy).build()
-  }
-  if (serverListening(connectionHost, connectionPort)) client.start()
 
-  def initDirStructureAndConfiguration(): Unit = {
+  var client: CuratorFramework = null
+
+  def initZoo(c: CuratorFramework): Unit = {
+    client = c
+    if (serverListening(connectionHost, connectionPort)) client.start()
     if (isZooOpen) {
       if (client.checkExists().forPath("/services") == null)
         client.create().withACL(Ids.OPEN_ACL_UNSAFE).forPath("/services")
@@ -33,10 +30,15 @@ object Zoo {
           .forPath("/services/configuration", "Client configuration with port 7".getBytes())
     }
   }
+ 
+  def getConnectString = client.getZookeeperClient().getCurrentConnectionString()
+
   def createZooKeeperClient() = client.getZookeeperClient()
   def isZooOpen(): Boolean =
     client.getState() == CuratorFrameworkState.STARTED &&
       serverListening(connectionHost, connectionPort)
+  private def connectionHost: String = getConnectString.split(':')(0)
+  private def connectionPort: Int = Integer.parseInt( getConnectString.split(':')(1))
   private def serverListening(host: String, port: Int): Boolean = {
     var s: Socket = null;
     try {
@@ -51,20 +53,15 @@ object Zoo {
 trait KeptByZoo {
   val serviceName: String
   val clientDesc = serviceName + '_' + InetAddress.getLocalHost().getCanonicalHostName()
-  val conf = getConf
+  protected lazy val conf = registerAndGetConf
 
-  def getConf(): String = {
+  private def registerAndGetConf(): String = {
     if (Zoo.isZooOpen) {
-      val client = Zoo.createZooKeeperClient()
-      client.blockUntilConnectedOrTimedOut()
-      val zk = client.getZooKeeper()
-      def registerAndGetConf() = {
-        zk.create("/services/runtime/" + clientDesc, new Array[Byte](0), Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
-        val rString = new String(zk.getData("/services/configuration", false, null))
-        zk.close
-        rString
-      }
-      registerAndGetConf
+      val client = Zoo.client
+      client.create().withMode(CreateMode.EPHEMERAL).withACL(Ids.OPEN_ACL_UNSAFE)
+      .forPath("/services/runtime/" + clientDesc)
+      new String( client.getData().forPath("/services/configuration"))      
     } else "Default configuration on port 808"
   }
+  def registerInZoo(): Unit = conf
 }

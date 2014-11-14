@@ -1,73 +1,78 @@
 
 import org.specs2.mutable.Specification
 import walidus.simple_zookeeper.KeptByZoo
+import walidus.simple_zookeeper.Zoo
 import spray.testkit.Specs2RouteTest
 import walidus.simple_zookeeper.MyService
 import org.apache.curator.test.BaseClassForTests
 import org.apache.curator.test.TestingServer
-import org.apache.curator.framework.CuratorFrameworkFactory
 import org.apache.curator.retry.RetryOneTime
 import org.apache.curator.framework.CuratorFramework
 import walidus.simple_zookeeper.Zoo
-import org.junit.Before
-import org.junit.After
-import org.junit.Test
-import org.junit.Assert
+import org.apache.curator.framework.CuratorFrameworkFactory
+import org.testng.Assert._
+import org.testng.annotations.Test
+import org.testng.annotations.Configuration
+import org.scalatest.Assertions
+import org.scalatest.testng.TestNGSuiteLike
+import org.testng.annotations.BeforeMethod
+import org.testng.annotations.AfterMethod
+import org.testng.annotations.BeforeSuite
+import org.apache.curator.framework.imps.CuratorFrameworkState;
+import walidus.simple_zookeeper.KeptByZoo
 
-class ZooSpec extends BaseClassForTests with KeptByZoo {
-  val serviceName = "testService"
+class ZooSpec extends BaseClassForTests with TestNGSuiteLike with SomethingDoer with Assertions {
 
-  var zkTestServer: TestingServer = null
   var cli: CuratorFramework = null
 
   //def cli_=(cf: org.apache.curator.framework.CuratorFramework): Unit = ???
   //def zkTestServer_=(ts: org.apache.curator.test.TestingServer): Unit = ???
 
-  @Before
-  def startZookeeper(): Unit = {
-    zkTestServer = new TestingServer(2181);
-    cli = CuratorFrameworkFactory.newClient(zkTestServer.getConnectString(), new RetryOneTime(2000));
+
+  @BeforeMethod
+  override def setup(): Unit = {
+    super.setup
+    cli = CuratorFrameworkFactory.newClient(server.getConnectString(), new RetryOneTime(2000));
+    Zoo.initZoo(cli)
+    //cli.start()
   }
 
-  @After
-  def stopZookeeper(): Unit = {
-    cli.close();
-    zkTestServer.stop();
+  @AfterMethod
+  override def teardown(): Unit = {
+    super.teardown
+    if(cli.getState() != CuratorFrameworkState.STOPPED) cli.close();
   }
+
   @Test
   def shouldInitializeProperly(): Unit = {
-    Zoo.initDirStructureAndConfiguration
-    Assert.assertNotNull(cli.checkExists().forPath("/services"))
-    Assert.assertNotNull(cli.checkExists().forPath("/services/runtime"))
-    Assert.assertNotNull(cli.checkExists().forPath("/services/configuration"))
-    Assert.assertNull(cli.checkExists().forPath("/services"))
+    assertNotNull(cli.checkExists().forPath("/services"))
+    assertNotNull(cli.checkExists().forPath("/services/runtime"))
+    assertNotNull(cli.checkExists().forPath("/services/configuration"))
+  }
+  @Test
+  def shouldRegisterProperly(): Unit = {
+    registerInZoo()
+    assertNotNull(cli.checkExists().forPath("/services/runtime/"+clientDesc))
+    assertNull(cli.checkExists().forPath("/services/notexisted"))
   }
   
-  
-  /*
-  "Zoo" should {
-
-    "initialize properly" in {
-      true
-    }
+  @Test
+  def shouldRunWhenNoConnection(): Unit = {
+    server.close()
+    cli.close()
+    assertEquals("COMPLETE", doSomething)
   }
-  "KeptByZoo" should {
-
-    "Create ephemeric placeholder" in {
-      true
-    }
+  @Test
+  def shouldFireWhenNoConnection(): Unit = {
+    server.close()
+    cli.close()
+    val doer = new AnyRef with SomethingDoer
+    doer.registerInZoo()
+    assertEquals("COMPLETE", doer.doSomething)
   }
-  "KeptByZoo" should {
+}
+trait SomethingDoer extends KeptByZoo {
+  val serviceName = "testService"
 
-    "Continue to run in case of connection lost" in {
-      true
-    }
-  }
-  "KeptByZoo" should {
-
-    "Fire witout ZooKeeper connection" in {
-      true
-    }
-  }
-  */
+  def doSomething: String = {Thread.sleep(100); "COMPLETE"}
 }

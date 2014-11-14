@@ -5,10 +5,23 @@ import spray.testkit.Specs2RouteTest
 import spray.http._
 import StatusCodes._
 import walidus.simple_zookeeper.MyService
+import akka.actor.Props
+import walidus.simple_zookeeper.HomeActor
+import walidus.simple_zookeeper.PingActor
+import walidus.simple_zookeeper.PongActor
+import walidus.simple_zookeeper.DispatcherActor
+import walidus.simple_zookeeper.PingService
+import walidus.simple_zookeeper.MyServiceActor
+import walidus.simple_zookeeper.PongService
+import walidus.simple_zookeeper.HomeService
 
-class ServicesSpec extends Specification with Specs2RouteTest {// with MyService {
-  //def actorRefFactory = system
-/* to myservice added trait actor and it don't compile, interesting, it worked without async evaluation
+class ServicesSpec extends Specification with Specs2RouteTest with MyService {
+  def actorRefFactory = system
+  val myActor = actorRefFactory.actorOf(Props[TestDispatcherActor], "dispatcher-service")
+  val homeS = actorRefFactory.actorOf(Props[TestHomeActor], "home-service")
+  val pingS = actorRefFactory.actorOf(Props[TestPingActor], "ping-service")
+  val pongS = actorRefFactory.actorOf(Props[TestPongActor], "pong-service")
+//to myservice added trait actor and it don't compile, interesting, it worked without async evaluation
 "MyService" should {
 
     "return a greeting for GET requests to the root path" in {
@@ -41,5 +54,19 @@ class ServicesSpec extends Specification with Specs2RouteTest {// with MyService
       }
     }
   }
-  */
+  
+}
+class TestPingActor extends PingService {
+  val conf = "Testing configuration of PingActor"
+}
+class TestPongActor extends PongService {
+  val conf = "Testing configuration of PongActor"
+}
+class TestHomeActor extends HomeService {
+  val conf = "Testing configuration of HomeActor"
+}
+class TestDispatcherActor extends MyServiceActor {
+  val homeS = context.actorOf(Props[TestHomeActor], "home-service")
+  val pingS = context.actorOf(Props[TestPingActor], "ping-service")
+  val pongS = context.actorOf(Props[TestPongActor], "pong-service")
 }
