@@ -12,6 +12,7 @@ import spray.routing.HttpService
 import spray.routing.RequestContext
 
 class DispatcherActor extends MyServiceActor with KeptByZoo {
+  // for big scale is more used creating/reusing actors on the fly (eg. per reguest), not staticly as here 
   val homeS = context.actorOf(Props[HomeActor], "home-service")
   val pingS = context.actorOf(Props[PingActor], "ping-service")
   val pongS = context.actorOf(Props[PongActor], "pong-service")
