@@ -24,12 +24,5 @@ libraryDependencies ++= {
   )
 }
 
-Revolver.settings
-
 scalaVersion  := "2.11.2"
 
-EclipseKeys.withSource := true
-
-EclipseKeys.eclipseOutput := Some(".target")
-
-EclipseKeys.useProjectId := true
